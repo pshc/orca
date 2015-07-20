@@ -5,3 +5,4 @@ authors = ["Paul Collier <paul@paulcollier.ca>"]
 
 [dependencies]
 freetype-rs = "*"
+image = "*"
