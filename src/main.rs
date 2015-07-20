@@ -7,11 +7,10 @@ fn blit() -> FtResult<()> {
 
     let lib = try!(freetype::Library::init());
     let face = try!(lib.new_face(ttf, 0));
-    try!(face.set_char_size(0, pt * 64, dpi, dpi));
+    try!(face.set_char_size(pt * 64, 0, dpi, 0));
 
-    {
-        let flags = freetype::face::LoadFlag::empty();
-        try!(face.load_char('O' as usize, flags));
+    for &ch in ['O', 'K'].iter() {
+        try!(face.load_char(ch as usize, freetype::face::RENDER));
 
         let slot = face.glyph();
         try!(slot.render_glyph(freetype::RenderMode::Normal));
@@ -41,6 +40,7 @@ fn blit() -> FtResult<()> {
             }
             println!("");
         }
+        println!("");
     }
 
     Ok(())
