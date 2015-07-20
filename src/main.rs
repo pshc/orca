@@ -1,23 +1,23 @@
-extern crate freetype;
+extern crate freetype as ft;
 
-use freetype::FtResult;
+use ft::FtResult;
 
 fn blit() -> FtResult<()> {
     let (ttf, pt, dpi) = ("test.ttf", 12, 96);
 
-    let lib = try!(freetype::Library::init());
+    let lib = try!(ft::Library::init());
     let face = try!(lib.new_face(ttf, 0));
     try!(face.set_char_size(pt * 64, 0, dpi, 0));
 
     for &ch in ['O', 'K'].iter() {
-        try!(face.load_char(ch as usize, freetype::face::RENDER));
+        try!(face.load_char(ch as usize, ft::face::RENDER));
 
         let slot = face.glyph();
-        try!(slot.render_glyph(freetype::RenderMode::Normal));
+        try!(slot.render_glyph(ft::RenderMode::Normal));
         let bitmap = slot.bitmap();
 
         {
-            use freetype::bitmap::PixelMode::*;
+            use ft::bitmap::PixelMode::*;
             let mode = try!(bitmap.pixel_mode());
             match mode {
                 Gray => (),
