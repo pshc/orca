@@ -23,15 +23,6 @@ fn blit<I>(img: &mut I) -> FtResult<()>
         try!(slot.render_glyph(ft::RenderMode::Normal));
         let bitmap = slot.bitmap();
 
-        {
-            use ft::bitmap::PixelMode::*;
-            let mode = try!(bitmap.pixel_mode());
-            match mode {
-                Gray => (),
-                _ => panic!("non-Gray ft pixel mode")
-            }
-        }
-
         let buf = bitmap.buffer();
         let pitch = bitmap.pitch();
         let w = bitmap.width();
