@@ -36,9 +36,7 @@ impl<'a> FreeTypePress<'a> {
         })
     }
 
-    pub fn blit_str<I>(&self, text: &str, dest: &mut I) -> FtResult<()>
-        where I: image::GenericImage<Pixel=image::Luma<u8>> {
-
+    pub fn blit_str<I: super::Paper>(&self, text: &str, dest: &mut I) -> FtResult<()> {
         let (dest_w, dest_h) = dest.dimensions();
 
         let mut pen_x = 0;
