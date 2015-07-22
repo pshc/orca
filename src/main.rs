@@ -1,4 +1,6 @@
 extern crate image;
+#[macro_use]
+extern crate log;
 
 use std::fs::File;
 use std::path::Path;

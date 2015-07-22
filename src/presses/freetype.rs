@@ -24,7 +24,7 @@ impl<'a> FreeTypePress<'a> {
             Some(metrics) => (metrics.height / 64) as i32,
             None => {
                 let guess = (pt as f32 * 1.5) as i32;
-                println!("{}: no line height metric available; guessing {}", ttf, guess);
+                warn!("{}: no line height metric available; guessing {}", ttf, guess);
                 guess
             }
         };
