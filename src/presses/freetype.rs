@@ -8,6 +8,8 @@ use self::ft::FtResult;
 pub struct FreeTypePress<'a> {
     _ft: ft::Library,
     face: ft::Face<'a>,
+
+    line_height: i32,
 }
 
 impl<'a> FreeTypePress<'a> {
@@ -17,9 +19,20 @@ impl<'a> FreeTypePress<'a> {
         let lib = try!(ft::Library::init());
         let face = try!(lib.new_face(ttf, 0));
         try!(face.set_char_size(pt * 64, 0, dpi, 0));
+
+        let line_height = match face.size_metrics() {
+            Some(metrics) => (metrics.height / 64) as i32,
+            None => {
+                let guess = (pt as f32 * 1.5) as i32;
+                println!("{}: no line height metric available; guessing {}", ttf, guess);
+                guess
+            }
+        };
+
         Ok(FreeTypePress {
             _ft: lib,
             face: face,
+            line_height: line_height,
         })
     }
 
@@ -29,7 +42,7 @@ impl<'a> FreeTypePress<'a> {
         let (dest_w, dest_h) = dest.dimensions();
 
         let mut pen_x = 0;
-        let mut pen_y = 15;
+        let mut pen_y = self.line_height;
         for ch in text.chars() {
             try!(self.face.load_char(ch as usize, ft::face::RENDER));
 
