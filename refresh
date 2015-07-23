@@ -1,0 +1,12 @@
+set -e
+OUT="${1-out.png}"
+# hash a new filename
+PNG="`shasum $OUT | cut -c 1-8`.png"
+mkdir -p target/png
+cp -- "$OUT" "target/png/$PNG"
+# tell OS X about it
+COLONS="`pwd | tr / : | cut -c 2-`:target:png:$PNG"
+osascript \
+    -e 'tell Application "Finder"' \
+    -e "set the desktop picture to {\"$COLONS\"} as alias" \
+    -e 'end tell'
