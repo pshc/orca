@@ -5,6 +5,7 @@ extern crate log;
 use std::fs::File;
 use std::process::Command;
 
+use presses::Press;
 
 mod presses;
 

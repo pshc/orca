@@ -35,8 +35,10 @@ impl<'a> FreeTypePress<'a> {
             line_height: line_height,
         })
     }
+}
 
-    pub fn blit_str<I: super::Paper>(&self, text: &str, dest: &mut I) -> FtResult<()> {
+impl<'a> super::Press for FreeTypePress<'a> {
+    fn blit_str<I: super::Paper>(&self, text: &str, dest: &mut I) -> FtResult<()> {
         let (dest_w, dest_h) = dest.dimensions();
 
         let mut pen_x = 0;
