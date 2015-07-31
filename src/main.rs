@@ -14,7 +14,7 @@ fn main() {
 
     let mut img = image::ImageBuffer::new(40, 20);
 
-    press.blit_str("Hello, world!", &mut img).unwrap();
+    press.blit_str("Hello, world!", (0, 0), &mut img).unwrap();
 
     let filename = "out.png";
     let ref mut fout = File::create(filename).unwrap();

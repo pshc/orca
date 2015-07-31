@@ -38,11 +38,12 @@ impl<'a> FreeTypePress<'a> {
 }
 
 impl<'a> super::Press for FreeTypePress<'a> {
-    fn blit_str<I: super::Paper>(&self, text: &str, dest: &mut I) -> FtResult<()> {
+    fn blit_str<I: super::Paper>(&self, text: &str, mut pen: (i32, i32), dest: &mut I)
+        -> FtResult<()> {
+
         let (dest_w, dest_h) = dest.dimensions();
 
-        let mut pen_x = 0;
-        let mut pen_y = self.line_height;
+        pen.1 += self.line_height;
         for ch in text.chars() {
             try!(self.face.load_char(ch as usize, ft::face::RENDER));
 
@@ -51,7 +52,7 @@ impl<'a> super::Press for FreeTypePress<'a> {
             let bitmap = slot.bitmap();
             let buf = bitmap.buffer();
 
-            let (left, top) = (pen_x + slot.bitmap_left(), pen_y - slot.bitmap_top());
+            let (left, top) = (pen.0 + slot.bitmap_left(), pen.1 - slot.bitmap_top());
             let right = cmp::min(left + bitmap.width(), dest_w as i32);
             let bottom = cmp::min(top + bitmap.rows(), dest_h as i32);
             let (w, h) = (right - left, bottom - top);
@@ -65,8 +66,8 @@ impl<'a> super::Press for FreeTypePress<'a> {
                     }
                 }
             }
-            pen_x += (slot.advance().x / 64) as i32;
-            pen_y += (slot.advance().y / 64) as i32;
+            pen.0 += (slot.advance().x / 64) as i32;
+            pen.1 += (slot.advance().y / 64) as i32;
         }
 
         Ok(())
