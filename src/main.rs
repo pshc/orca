@@ -126,31 +126,32 @@ fn compute_positions(tree: &Tree, sizes: &[Size], coords: &mut [Pos]) {
     let mut stack = vec![(Pos(0, 0), 1)];
     for ix in 0..tree.len() {
         // this is pretty awkward. maybe ditch last_mut?
-        let (pop, push) = match stack.last_mut().expect("unexpected end of tree") {
-            &mut (ref mut cursor, ref mut n_siblings) => {
-                coords[ix] = *cursor;
+        let (pop, push) = {
+            let (ref mut cursor, ref mut n_siblings) =
+                    *stack.last_mut().expect("unexpected end of tree");
 
-                // if we have children, push the cursor and sibling count on the stack
-                let Branch(n) = tree.branches[ix];
-                let push = if n > 0 {
-                    let mut child_pos = *cursor;
-                    // hack: move cursor past the content of this node
-                    child_pos.0 += 10;
-                    Some((child_pos, n))
-                }
-                else {
-                    None
-                };
+            coords[ix] = *cursor;
 
-                // if we're done at this level, pop back out to our old cursor
-                let size = sizes[ix];
-                cursor.0 += size.0 as i32;
-                assert!(*n_siblings > 0);
-                *n_siblings -= 1;
-                let pop = *n_siblings == 0;
-
-                (pop, push)
+            // if we have children, push the cursor and sibling count on the stack
+            let Branch(n) = tree.branches[ix];
+            let push = if n > 0 {
+                let mut child_pos = *cursor;
+                // hack: move cursor past the content of this node
+                child_pos.0 += 10;
+                Some((child_pos, n))
             }
+            else {
+                None
+            };
+
+            // if we're done at this level, pop back out to our old cursor
+            let size = sizes[ix];
+            cursor.0 += size.0 as i32;
+            assert!(*n_siblings > 0);
+            *n_siblings -= 1;
+            let pop = *n_siblings == 0;
+
+            (pop, push)
         };
         if pop {
             stack.pop().unwrap();
