@@ -22,8 +22,8 @@ fn draw_math<I: Paper>(paper: &mut I) {
 
     const N: usize = 5;
     let strs = ["+", "4", "-", "2", "1"];
-    let tree = vec![Children(2), Children(0), Children(2), Children(0), Children(0)];
-    let tree = Tree::new(&tree[..]);
+    let branches = vec![Branch(2), Branch(0), Branch(2), Branch(0), Branch(0)];
+    let tree = Tree::new(&branches[..]);
 
     let mut c_size = [Size(0, 0); N];
     compute_sizes(&tree, &mut c_size);
@@ -39,23 +39,23 @@ fn draw_math<I: Paper>(paper: &mut I) {
 
 /// Determines how many children a tree node has.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Children(u32);
+pub struct Branch(u32);
 
 /// Represents a tree hierarchy.
 pub struct Tree<'a> {
-    pub tree: &'a [Children],
+    pub branches: &'a [Branch],
 }
 
 impl<'a> Tree<'a> {
-    pub fn new(tree: &'a [Children]) -> Self {
-        assert!(tree.len() > 0, "tree must have root");
+    pub fn new(branches: &'a [Branch]) -> Self {
+        assert!(branches.len() > 0, "tree must have root");
         Tree {
-            tree: tree,
+            branches: branches,
         }
     }
 
     pub fn len(&self) -> usize {
-        self.tree.len()
+        self.branches.len()
     }
 
     /// Depth-first bottom-up pass over the tree.
@@ -76,7 +76,7 @@ impl<'a> Tree<'a> {
         where F: FnMut(usize, &[R]) -> R {
 
         // descend first to leaves
-        let Children(n) = self.tree[root_ix];
+        let Branch(n) = self.branches[root_ix];
         let mut child_ix = root_ix + 1;
 
         let r = if n > 0 {
@@ -131,7 +131,7 @@ fn compute_positions(tree: &Tree, sizes: &[Size], coords: &mut [Pos]) {
                 coords[ix] = *cursor;
 
                 // if we have children, push the cursor and sibling count on the stack
-                let Children(n) = tree.tree[ix];
+                let Branch(n) = tree.branches[ix];
                 let push = if n > 0 {
                     let mut child_pos = *cursor;
                     // hack: move cursor past the content of this node
