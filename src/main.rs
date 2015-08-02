@@ -27,10 +27,11 @@ fn draw_math<I: Paper>(paper: &mut I) {
     draw_tree(&tree, &tokens[..], paper);
 }
 
-fn draw_tree<I: Paper, D: fmt::Display>(tree: &Tree, tokens: &[D], paper: &mut I) {
+fn draw_tree<I: Paper>(tree: &Tree, tokens: &[String], paper: &mut I) {
     let ref press = presses::FreeTypePress::new().unwrap();
 
     const N: usize = 5;
+    assert!(tree.len() >= N);
     assert!(tokens.len() >= N);
 
     let mut c_size = [Size(0, 0); N];
@@ -42,7 +43,7 @@ fn draw_tree<I: Paper, D: fmt::Display>(tree: &Tree, tokens: &[D], paper: &mut I
     for ix in 0..N {
         let Pos(x, y) = c_pos[ix];
         // blit_str should take Write or something to avoid temporary
-        let ref s = format!("{}", tokens[ix]);
+        let ref s = tokens[ix];
         press.blit_str(s, (x, y), paper).unwrap();
     }
 }
@@ -173,16 +174,23 @@ fn compute_positions(tree: &Tree, sizes: &[Size], coords: &mut [Pos]) {
     assert_eq!(stack.len(), 0);
 }
 
-/// Anything that can germinate a Tree of Ts.
-pub trait Seed<T> {
-    fn germinate<F: FnMut(Branch, T)>(&self, shoot: &mut F);
+/// The product of growing a Tree.
+pub trait Wood : fmt::Display {
+    fn branching_factor(&self) -> usize;
 }
 
-fn grow_tree<T, S: Seed<T>>(seed: &S) -> (Vec<Branch>, Vec<T>) {
+/// Anything that can germinate a Tree of Ts.
+pub trait Seed {
+    fn germinate<F: FnMut(&Wood)>(&self, shoot: &mut F);
+}
+
+fn grow_tree<S: Seed>(seed: &S) -> (Vec<Branch>, Vec<String>) {
     let mut branches = vec![];
     let mut tokens = vec![];
-    seed.germinate(&mut |branch, token| {
+    seed.germinate(&mut |token| {
+        let branch = Branch(token.branching_factor() as u32);
         branches.push(branch);
+        let token = format!("{}", token);
         tokens.push(token);
     });
     (branches, tokens)
@@ -200,6 +208,17 @@ enum ExprBark {
     Plus,
 }
 
+impl Wood for ExprBark {
+    fn branching_factor(&self) -> usize {
+        use ExprBark::*;
+        match *self {
+            Int(_) => 0,
+            Minus => 2,
+            Plus => 2,
+        }
+    }
+}
+
 impl fmt::Display for ExprBark {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use ExprBark::*;
@@ -212,18 +231,18 @@ impl fmt::Display for ExprBark {
 }
 
 // ought to be auto-derived
-impl Seed<ExprBark> for Expr {
-    fn germinate<F: FnMut(Branch, ExprBark)>(&self, shoot: &mut F) {
+impl Seed for Expr {
+    fn germinate<F: FnMut(&Wood)>(&self, shoot: &mut F) {
         use Expr::*;
         match *self {
-            Int(i) => shoot(Branch(0), ExprBark::Int(i)),
+            Int(i) => shoot(&ExprBark::Int(i)),
             Minus(ref left, ref right) => {
-                shoot(Branch(2), ExprBark::Minus);
+                shoot(&ExprBark::Minus);
                 left.germinate(shoot);
                 right.germinate(shoot);
             }
             Plus(ref left, ref right) => {
-                shoot(Branch(2), ExprBark::Plus);
+                shoot(&ExprBark::Plus);
                 left.germinate(shoot);
                 right.germinate(shoot);
             }
