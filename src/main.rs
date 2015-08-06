@@ -5,6 +5,7 @@ extern crate log;
 use std::cmp;
 use std::fmt;
 use std::fs::File;
+use std::marker::PhantomData;
 use std::process::Command;
 
 use presses::{Paper, Press};
@@ -19,10 +20,16 @@ struct Pos(i32, i32);
 
 
 fn draw_math<I: Paper>(paper: &mut I) {
-    let minus = Expr::Minus(Box::new(Expr::Int(2)), Box::new(Expr::Int(1)));
-    let math = Expr::Plus(Box::new(Expr::Int(4)), Box::new(minus));
+    use Expr::*;
 
-    let (branches, tokens) = grow_tree(&math);
+    let v = Var;
+    let bind_v = Bind(Ref::new(0));
+    let defn = Stmt::Let(v, Expr::Int(1));
+    let minus = Minus(Box::new(Int(2)), Box::new(bind_v));
+    let math = Plus(Box::new(Int(4)), Box::new(minus));
+    let body = Body { stmts: vec![defn, Stmt::Print(math)] };
+
+    let (branches, tokens) = grow_tree(&body);
     let tree = Tree::new(&branches[..]);
     draw_tree(&tree, &tokens[..], paper);
 }
@@ -30,9 +37,9 @@ fn draw_math<I: Paper>(paper: &mut I) {
 fn draw_tree<I: Paper>(tree: &Tree, tokens: &[String], paper: &mut I) {
     let ref press = presses::FreeTypePress::new().unwrap();
 
-    const N: usize = 5;
-    assert!(tree.len() >= N);
-    assert!(tokens.len() >= N);
+    const N: usize = 10;
+    assert_eq!(tree.len(), N);
+    assert_eq!(tokens.len(), N);
 
     let mut c_size = [Size(0, 0); N];
     compute_sizes(&tree, &mut c_size);
@@ -196,13 +203,60 @@ fn grow_tree<S: Seed>(seed: &S) -> (Vec<Branch>, Vec<String>) {
     (branches, tokens)
 }
 
-enum Expr {
+///////////////// REFS /////////////////
+
+// The naked <T> may be inappropriate.
+#[derive(Debug, Eq, PartialEq)]
+pub struct Ref<T> {
+    pub id: RefId,
+    _phantom: PhantomData<T>,
+}
+
+// '?Sized'?
+impl<T> Copy for Ref<T> {}
+impl<T> Clone for Ref<T> { fn clone(&self) -> Self { *self } }
+
+impl<T> Ref<T> {
+    fn new(id: RefId) -> Self {
+        Ref {id: id, _phantom: PhantomData}
+    }
+}
+
+pub type RefId = usize;
+
+///////////////// REFERENT /////////////
+
+pub struct Var;
+
+pub struct VarBark;
+
+impl Wood for VarBark {
+    fn branching_factor(&self) -> usize { 0 }
+}
+
+impl fmt::Display for VarBark {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "var")
+    }
+}
+
+impl Seed for Var {
+    fn germinate<F: FnMut(&Wood)>(&self, shoot: &mut F) {
+        shoot(&VarBark);
+    }
+}
+
+///////////////// EXPR /////////////////
+
+pub enum Expr {
+    Bind(Ref<Var>),
     Int(i32),
     Minus(Box<Expr>, Box<Expr>),
     Plus(Box<Expr>, Box<Expr>),
 }
 
-enum ExprBark {
+pub enum ExprBark {
+    Bind(Ref<Var>),
     Int(i32),
     Minus,
     Plus,
@@ -212,6 +266,7 @@ impl Wood for ExprBark {
     fn branching_factor(&self) -> usize {
         use ExprBark::*;
         match *self {
+            Bind(_) => 0,
             Int(_) => 0,
             Minus => 2,
             Plus => 2,
@@ -223,6 +278,7 @@ impl fmt::Display for ExprBark {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use ExprBark::*;
         match *self {
+            Bind(_) => write!(f, "x"),
             Int(i) => write!(f, "{}", i),
             Minus => write!(f, "-"),
             Plus => write!(f, "+"),
@@ -235,6 +291,7 @@ impl Seed for Expr {
     fn germinate<F: FnMut(&Wood)>(&self, shoot: &mut F) {
         use Expr::*;
         match *self {
+            Bind(ref r) => shoot(&ExprBark::Bind(*r)),
             Int(i) => shoot(&ExprBark::Int(i)),
             Minus(ref left, ref right) => {
                 shoot(&ExprBark::Minus);
@@ -249,6 +306,84 @@ impl Seed for Expr {
         }
     }
 }
+
+////////////////// STMT ////////////////
+
+pub enum Stmt {
+    Let(Var, Expr),
+    Print(Expr),
+}
+
+pub enum StmtBark {
+    Let,
+    Print,
+}
+
+impl fmt::Display for StmtBark {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use StmtBark::*;
+        match *self {
+            Let => write!(f, "let"),
+            Print => write!(f, "print"),
+        }
+    }
+}
+
+impl Wood for StmtBark {
+    fn branching_factor(&self) -> usize {
+        use StmtBark::*;
+        match *self {
+            Let => 2,
+            Print => 1,
+        }
+    }
+}
+
+// ought to be auto-derived
+impl Seed for Stmt {
+    fn germinate<F: FnMut(&Wood)>(&self, shoot: &mut F) {
+        use Stmt::*;
+        match *self {
+            Let(ref var, ref expr) => {
+                shoot(&StmtBark::Let);
+                var.germinate(shoot);
+                expr.germinate(shoot);
+            }
+            Print(ref expr) => {
+                shoot(&StmtBark::Print);
+                expr.germinate(shoot);
+            }
+        }
+    }
+}
+
+pub struct Body {
+    pub stmts: Vec<Stmt>,
+}
+
+pub struct BodyBark(usize);
+
+impl fmt::Display for BodyBark {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "body: ")
+    }
+}
+
+impl Wood for BodyBark {
+    fn branching_factor(&self) -> usize { self.0 }
+}
+
+// ought to be auto-derived
+impl Seed for Body {
+    fn germinate<F: FnMut(&Wood)>(&self, shoot: &mut F) {
+        shoot(&BodyBark(self.stmts.len()));
+        for stmt in self.stmts.iter() {
+            stmt.germinate(shoot);
+        }
+    }
+}
+
+////////////////////////////////////////////
 
 fn main() {
     let mut img = image::ImageBuffer::new(100, 40);
