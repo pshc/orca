@@ -42,7 +42,7 @@ fn draw_tree<I: Paper>(tree: &Tree, tokens: &[String], paper: &mut I) {
     assert_eq!(tokens.len(), N);
 
     let mut c_size = [Size(0, 0); N];
-    compute_sizes(&tree, &mut c_size);
+    compute_sizes(&tree, &tokens, press, &mut c_size);
 
     let mut c_pos = [Pos(0, 0); N];
     compute_positions(&tree, &c_size, &mut c_pos);
@@ -116,15 +116,16 @@ impl<'a> Tree<'a> {
     }
 }
 
-fn compute_sizes(tree: &Tree, sizes: &mut [Size]) {
+fn compute_sizes<P: Press>(tree: &Tree, tokens: &[String], press: &P, sizes: &mut [Size]) {
     assert!(sizes.len() >= tree.len(), "Not enough Sizes allocated");
 
     // measure everything, starting bottom-up
     // currently nothing fancy like margins or padding
     let _total_size = tree.flow_up(|ix, child_sizes| -> Size {
 
-        // compute this from content
-        let my_size = Size(10, 10);
+        let ref text = tokens[ix];
+        let (w, h) = press.measure_str(text).unwrap();
+        let my_size = Size(w, h);
 
         // size is sum of widths and max of heights
         let size = child_sizes.iter().fold(my_size, |total, child: &Size| {
@@ -386,7 +387,7 @@ impl Seed for Body {
 ////////////////////////////////////////////
 
 fn main() {
-    let mut img = image::ImageBuffer::new(100, 40);
+    let mut img = image::ImageBuffer::new(170, 40);
 
     draw_math(&mut img);
 

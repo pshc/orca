@@ -71,4 +71,17 @@ impl<'a> super::Press for FreeTypePress<'a> {
 
         Ok(())
     }
+
+    fn measure_str(&self, text: &str) -> FtResult<(u32, u32)> {
+        let mut pen_x = 0;
+
+        for ch in text.chars() {
+            try!(self.face.load_char(ch as usize, ft::face::DEFAULT));
+            let slot = self.face.glyph();
+            pen_x += (slot.advance().x / 64) as i32;
+        }
+
+        let pen = (cmp::max(pen_x, 0) as u32, 10);
+        Ok(pen)
+    }
 }
