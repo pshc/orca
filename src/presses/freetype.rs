@@ -48,7 +48,6 @@ impl<'a> super::Press for FreeTypePress<'a> {
             try!(self.face.load_char(ch as usize, ft::face::RENDER));
 
             let slot = self.face.glyph();
-            try!(slot.render_glyph(ft::RenderMode::Normal));
             let bitmap = slot.bitmap();
             let buf = bitmap.buffer();
 
