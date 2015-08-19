@@ -25,7 +25,7 @@ struct Fit(u32, u32);
 struct Pos(i32, i32);
 
 
-fn draw_math<I: Paper>(paper: &mut I) {
+fn build_math() -> Body {
     use Expr::*;
 
     let v = Var;
@@ -34,8 +34,11 @@ fn draw_math<I: Paper>(paper: &mut I) {
     let minus = Minus(Box::new(Int(2)), Box::new(bind_v));
     let math = Plus(Box::new(Int(4)), Box::new(minus));
     let body = Body { stmts: vec![defn, Stmt::Print(math)] };
+    body
+}
 
-    let (branches, tokens) = grow_tree(&body);
+fn draw_math<I: Paper>(math: &Body, paper: &mut I) {
+    let (branches, tokens) = grow_tree(math);
     let tree = Tree::new(&branches[..]);
     draw_tree(&tree, &tokens[..], paper);
 }
@@ -401,7 +404,7 @@ impl Seed for Body {
 fn main() {
     let mut img = image::ImageBuffer::new(170, 40);
 
-    draw_math(&mut img);
+    draw_math(&build_math(), &mut img);
 
     let filename = "out.png";
     let ref mut fout = File::create(filename).unwrap();
