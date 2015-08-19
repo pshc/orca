@@ -168,6 +168,7 @@ fn compute_positions(tree: &Tree, fits: &[Fit], bounds: &[Bound], coords: &mut [
             let push = if n > 0 {
                 let mut child_pos = *cursor;
                 child_pos.0 += fits[ix].0 as i32;
+                child_pos.1 += 5;
                 Some((child_pos, n))
             }
             else {
