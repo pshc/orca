@@ -12,9 +12,15 @@ use presses::{Paper, Press};
 
 mod presses;
 
+/// How much space a subtree takes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct Size(u32, u32);
+struct Bound(u32, u32);
 
+/// Minimum envelope around a token.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct Fit(u32, u32);
+
+/// Subtree position.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct Pos(i32, i32);
 
@@ -41,11 +47,14 @@ fn draw_tree<I: Paper>(tree: &Tree, tokens: &[String], paper: &mut I) {
     assert_eq!(tree.len(), N);
     assert_eq!(tokens.len(), N);
 
-    let mut c_size = [Size(0, 0); N];
-    compute_sizes(&tree, &tokens, press, &mut c_size);
+    let mut c_fit = [Fit(0, 0); N];
+    measure_fits(tokens, press, &mut c_fit);
+
+    let mut c_bound = [Bound(0, 0); N];
+    compute_bounds(&tree, &c_fit, &mut c_bound);
 
     let mut c_pos = [Pos(0, 0); N];
-    compute_positions(&tree, &c_size, &mut c_pos);
+    compute_positions(&tree, &c_fit, &c_bound, &mut c_pos);
 
     for ix in 0..N {
         let Pos(x, y) = c_pos[ix];
@@ -116,30 +125,33 @@ impl<'a> Tree<'a> {
     }
 }
 
-fn compute_sizes<P: Press>(tree: &Tree, tokens: &[String], press: &P, sizes: &mut [Size]) {
-    assert!(sizes.len() >= tree.len(), "Not enough Sizes allocated");
+fn measure_fits<P: Press>(tokens: &[String], press: &P, fits: &mut [Fit]) {
+    for (ix, ref text) in tokens.iter().enumerate() {
+        let (w, h) = press.measure_str(text).unwrap();
+        fits[ix] = Fit(w, h);
+    }
+}
 
+fn compute_bounds(tree: &Tree, fits: &[Fit], bounds: &mut [Bound]) {
     // measure everything, starting bottom-up
     // currently nothing fancy like margins or padding
-    let _total_size = tree.flow_up(|ix, child_sizes| -> Size {
+    let _total_bounds = tree.flow_up(|ix, child_bounds| -> Bound {
 
-        let ref text = tokens[ix];
-        let (w, h) = press.measure_str(text).unwrap();
-        let my_size = Size(w, h);
+        let Fit(w, h) = fits[ix];
 
-        // size is sum of widths and max of heights
-        let size = child_sizes.iter().fold(my_size, |total, child: &Size| {
+        // boundary is sum of widths and max of heights
+        let bound = child_bounds.iter().fold(Bound(w, h), |total, child: &Bound| {
             let sum_w = child.0 + total.0;
             let max_h = cmp::max(child.1, total.1);
-            Size(sum_w, max_h)
+            Bound(sum_w, max_h)
         });
-        sizes[ix] = size;
-        size
+        bounds[ix] = bound;
+        bound
     });
 }
 
-fn compute_positions(tree: &Tree, sizes: &[Size], coords: &mut [Pos]) {
-    assert!(sizes.len() >= tree.len(), "Not enough Sizes allocated");
+fn compute_positions(tree: &Tree, fits: &[Fit], bounds: &[Bound], coords: &mut [Pos]) {
+    assert!(bounds.len() >= tree.len(), "Not enough Bounds allocated");
     assert!(coords.len() >= tree.len(), "Not enough Pos' allocated");
 
     let mut stack = vec![(Pos(0, 0), 1)];
@@ -155,8 +167,7 @@ fn compute_positions(tree: &Tree, sizes: &[Size], coords: &mut [Pos]) {
             let Branch(n) = tree.branches[ix];
             let push = if n > 0 {
                 let mut child_pos = *cursor;
-                // hack: move cursor past the content of this node
-                child_pos.0 += 10;
+                child_pos.0 += fits[ix].0 as i32;
                 Some((child_pos, n))
             }
             else {
@@ -164,8 +175,8 @@ fn compute_positions(tree: &Tree, sizes: &[Size], coords: &mut [Pos]) {
             };
 
             // if we're done at this level, pop back out to our old cursor
-            let size = sizes[ix];
-            cursor.0 += size.0 as i32;
+            let bound = bounds[ix];
+            cursor.0 += bound.0 as i32;
             assert!(*n_siblings > 0);
             *n_siblings -= 1;
             let pop = *n_siblings == 0;
