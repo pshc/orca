@@ -1,3 +1,5 @@
+#![feature(box_syntax, box_patterns)]
+
 extern crate image;
 #[macro_use]
 extern crate log;
@@ -6,6 +8,7 @@ use std::cmp;
 use std::fmt;
 use std::fs::File;
 use std::marker::PhantomData;
+use std::mem;
 use std::process::Command;
 
 use presses::{Paper, Press};
@@ -28,12 +31,42 @@ struct Pos(i32, i32);
 fn build_math() -> Body {
     use Expr::*;
 
+    // IC
+    let mut body = Body { stmts: vec![] };
+    // 'print'
+    body.stmts.push(Stmt::Print(Hole));
+    // '4'
+    match body.stmts[0] {
+        Stmt::Print(ref mut hole) => *hole = Int(4), // `print(4)`
+        _ => panic!(),
+    }
+    // '+'
+    match body.stmts[0] {
+        Stmt::Print(ref mut expr) => {
+            let mut hand = Plus(box Hole, box Hole);
+            mem::swap(expr, &mut hand); // `print(_ + _)`
+            match *expr {
+                Plus(box ref mut left, _) => {
+                    mem::swap(left, &mut hand) // `print(4 + _)`
+                }
+                _ => panic!()
+            }
+        }
+        _ => panic!()
+    }
+    // '2 -'
     let v = Var;
-    let bind_v = Bind(Ref::new(0));
-    let defn = Stmt::Let(v, Expr::Int(1));
-    let minus = Minus(Box::new(Int(2)), Box::new(bind_v));
-    let math = Plus(Box::new(Int(4)), Box::new(minus));
-    let body = Body { stmts: vec![defn, Stmt::Print(math)] };
+    match body.stmts[0] {
+        Stmt::Print(Plus(_, box ref mut right)) => {
+            let bind = Bind(Ref::new(0)); // need to bind `v` somehow
+
+            *right = Minus(box Int(2), box bind); // `print(4 + (2 - x))`
+        }
+        _ => panic!()
+    }
+    // prepend 'let x = 1'
+    body.stmts.insert(0, Stmt::Let(v, Int(1)));
+
     body
 }
 
@@ -265,6 +298,7 @@ impl Seed for Var {
 ///////////////// EXPR /////////////////
 
 pub enum Expr {
+    Hole,
     Bind(Ref<Var>),
     Int(i32),
     Minus(Box<Expr>, Box<Expr>),
@@ -272,6 +306,7 @@ pub enum Expr {
 }
 
 pub enum ExprBark {
+    Hole,
     Bind(Ref<Var>),
     Int(i32),
     Minus,
@@ -282,6 +317,7 @@ impl Wood for ExprBark {
     fn branching_factor(&self) -> usize {
         use ExprBark::*;
         match *self {
+            Hole => 0,
             Bind(_) => 0,
             Int(_) => 0,
             Minus => 2,
@@ -294,6 +330,7 @@ impl fmt::Display for ExprBark {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use ExprBark::*;
         match *self {
+            Hole => write!(f, "_"),
             Bind(_) => write!(f, "x"),
             Int(i) => write!(f, "{}", i),
             Minus => write!(f, "-"),
@@ -307,6 +344,7 @@ impl Seed for Expr {
     fn germinate<F: FnMut(&Wood)>(&self, shoot: &mut F) {
         use Expr::*;
         match *self {
+            Hole => shoot(&ExprBark::Hole),
             Bind(ref r) => shoot(&ExprBark::Bind(*r)),
             Int(i) => shoot(&ExprBark::Int(i)),
             Minus(ref left, ref right) => {
