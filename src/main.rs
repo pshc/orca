@@ -439,19 +439,18 @@ impl Seed for Body {
 
 ////////////////////////////////////////////
 
-fn main() {
+#[allow(dead_code)]
+fn write_png(body: &Body, filename: &str) {
     let mut img = image::ImageBuffer::new(170, 40);
 
-    draw_math(&build_math(), &mut img);
+    draw_math(body, &mut img);
 
-    let filename = "out.png";
     let ref mut fout = File::create(filename).unwrap();
     image::ImageLuma8(img).save(fout, image::PNG).unwrap();
-
-    change_desktop_background(filename)
 }
 
 /// Invokes ./refresh for shoddy livecoding.
+#[allow(dead_code)]
 fn change_desktop_background(filename: &str) {
     if let Ok(mut cmd) = Command::new("sh").arg("-c").arg("./refresh").arg(filename).spawn() {
         println!("Refreshing.");
@@ -460,4 +459,11 @@ fn change_desktop_background(filename: &str) {
     else {
         println!("Wrote {}.", filename);
     }
+}
+
+#[test]
+fn test_png_output() {
+    let filename = "out.png";
+    write_png(&build_math(), filename);
+    change_desktop_background(filename)
 }
