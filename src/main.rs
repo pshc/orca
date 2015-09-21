@@ -4,6 +4,10 @@ extern crate image;
 #[macro_use]
 extern crate log;
 
+#[cfg(not(test))]
+#[macro_use]
+extern crate glium;
+
 use std::cmp;
 use std::fmt;
 use std::fs::File;
@@ -14,6 +18,8 @@ use std::process::Command;
 use presses::{Paper, Press};
 
 mod presses;
+#[cfg(not(test))]
+mod scene;
 
 /// How much space a subtree takes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -466,4 +472,11 @@ fn test_png_output() {
     let filename = "out.png";
     write_png(&build_math(), filename);
     change_desktop_background(filename)
+}
+
+////////////////////////////////
+
+#[cfg(not(test))]
+fn main() {
+    scene::main();
 }
