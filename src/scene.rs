@@ -26,9 +26,10 @@ struct Scene {
 #[derive(Copy, Clone, Debug)]
 struct Vertex {
     pos: [f32; 2],
+    uv: [f32; 2],
 }
 
-implement_vertex!(Vertex, pos);
+implement_vertex!(Vertex, pos, uv);
 
 #[derive(Debug)]
 struct Props {
@@ -49,10 +50,10 @@ impl Scene {
         let program = glium::Program::from_source(display, vsh, fsh, None).unwrap();
 
         let verts = vec![
-            Vertex {pos: [-0.8, -0.8]},
-            Vertex {pos: [ 0.8,  0.8]},
-            Vertex {pos: [ 0.8, -0.8]},
-            Vertex {pos: [-0.8,  0.8]},
+            Vertex {pos: [ 0.0,  0.0], uv: [0.0, 0.0]},
+            Vertex {pos: [ 1.0,  1.0], uv: [1.0, 1.0]},
+            Vertex {pos: [ 1.0,  0.0], uv: [1.0, 0.0]},
+            Vertex {pos: [ 0.0,  1.0], uv: [0.0, 1.0]},
         ];
         let v_buffer = glium::VertexBuffer::new(display, &verts).unwrap();
         let indices = vec![0, 1, 2, 0, 3, 1];
