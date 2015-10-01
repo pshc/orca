@@ -1,6 +1,24 @@
 use glium;
 use image::ImageBuffer;
 
+#[derive(Debug)]
+struct PunchTray {
+    texture: glium::Texture2d,
+}
+
+impl PunchTray {
+    pub fn new(display: &glium::Display) -> Self {
+        let pixel_fmt = glium::texture::UncompressedFloatFormat::U8;
+        let mipmaps = glium::texture::MipmapsOption::NoMipmap;
+        let size = 256;
+        let texture = glium::Texture2d::empty_with_format(display, pixel_fmt, mipmaps,
+                                                          size, size).unwrap();
+        PunchTray {
+            texture: texture,
+        }
+    }
+}
+
 struct Scene {
     props: Option<Props>,
 }
@@ -12,11 +30,12 @@ struct Vertex {
 
 implement_vertex!(Vertex, pos);
 
+#[derive(Debug)]
 struct Props {
     program: glium::Program,
     i_buffer: glium::IndexBuffer<u8>,
     v_buffer: glium::VertexBuffer<Vertex>,
-    texture: glium::Texture2d,
+    tray: PunchTray,
 }
 
 impl Scene {
@@ -40,16 +59,11 @@ impl Scene {
         let i_kind = glium::index::PrimitiveType::TrianglesList;
         let i_buffer = glium::IndexBuffer::new(display, i_kind, &indices).unwrap();
 
-        let pixel_fmt = glium::texture::UncompressedFloatFormat::U8;
-        let mipmaps = glium::texture::MipmapsOption::NoMipmap;
-        let texture = glium::Texture2d::empty_with_format(display, pixel_fmt, mipmaps,
-                                                          256, 256).unwrap();
-
         self.props = Some(Props {
             program: program,
             v_buffer: v_buffer,
             i_buffer: i_buffer,
-            texture: texture,
+            tray: PunchTray::new(display),
         });
     }
 
@@ -62,7 +76,7 @@ impl Scene {
         let mut img = ImageBuffer::new(w, h);
         super::draw_math(body, &mut img);
         let rect = glium::Rect {left: 0, bottom: 0, width: w, height: h};
-        p.texture.write(rect, img);
+        p.tray.texture.write(rect, img);
     }
 
     fn render<G: glium::Surface>(&self, gl: &mut G) {
@@ -72,7 +86,7 @@ impl Scene {
         };
 
         let ref uniforms = uniform! {
-            tex: &p.texture,
+            tex: &p.tray.texture,
         };
         gl.draw(&p.v_buffer, &p.i_buffer, &p.program, uniforms, &Default::default()).unwrap();
     }
