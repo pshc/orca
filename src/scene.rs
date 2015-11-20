@@ -123,8 +123,9 @@ pub fn main() {
 
         // chill
         {
-            use std::thread::sleep_ms;
-            sleep_ms(33);
+            use std::time::Duration;
+            use std::thread::sleep;
+            sleep(Duration::from_millis(33));
         }
     }
 }
